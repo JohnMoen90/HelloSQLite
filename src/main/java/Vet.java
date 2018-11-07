@@ -17,9 +17,10 @@ public class Vet {
                 "---------\n" +
                 "1: Add a dog\n" +
                 "2: Search for a dog by name\n" +
-                "3: Edit a dog's vaccination status\n" +
-                "4: Delete a dog\n" +
-                "5: Quit\n";
+                "3: Search for a dog by ID\n" +
+                "4: Edit a dog's vaccination status\n" +
+                "5: Delete a dog\n" +
+                "6: Quit\n";
 
         do {
 
@@ -28,23 +29,25 @@ public class Vet {
             if (choice == 1) {
                 addDog();
             } else if (choice == 2) {
-                searchDog();
+                searchDogByName();
             } else if (choice == 3) {
-                updateVax();
+                searchDogByID();
             } else if (choice == 4) {
-                deleteDog();
+                updateVax();
             } else if (choice == 5) {
+                deleteDog();
+            } else if (choice == 6) {
                 System.out.println("Goodbye!");
             } else {
-                System.out.println("Please enter 1, 2, 3, 4, or 5!");
+                System.out.println("Please enter 1, 2, 3, 4, 5, or 6!");
             }
-        } while (choice != 5);
+        } while (choice != 6);
 
     }
 
     private static void addDog() {
 
-        final String addSql = "insert into dogs values (?, ?, ?, ?)";
+        final String addSql = "insert into dogs (name, age, weight, vax) values (?, ?, ?, ?)";
 
         try (Connection connection = DriverManager.getConnection(url);
             PreparedStatement ps = connection.prepareStatement(addSql)){
@@ -72,27 +75,55 @@ public class Vet {
 
     }
 
-    private static void searchDog() {
+    private static void searchDogByName() {
 
-        final String searchSql = "SELECT * FROM dogs WHERE name LIKE ?";
+        final String searchSql = "SELECT * FROM dogs WHERE UPPER(name) LIKE UPPER(?)";
 
         try (Connection connection = DriverManager.getConnection(url);
              PreparedStatement searchStatement = connection.prepareStatement(searchSql)){
 
             String searchName = stringInput("Enter name to search for: ");
 
-            searchStatement.setString(1, searchName);
+            searchStatement.setString(1, "%" + searchName + "%");
             ResultSet dogRs = searchStatement.executeQuery();
 
             if (!dogRs.isBeforeFirst()) {   // Returns false if no results
                 System.out.println("Sorry, no dogs by that name found");
             } else {
                 while (dogRs.next()) {
-                    String name = dogRs.getString("name");
-                    int age = dogRs.getInt("age");
-                    double weight = dogRs.getDouble("weight");
-                    boolean vax = dogRs.getBoolean("vax");
-                    System.out.printf("Name %s, age %d, weight %.2f, vaccinated %s\n", name, age, weight, vax);
+                    printDogInfo(dogRs);
+                }
+
+            }
+
+        }
+
+        catch (SQLException sqle) {
+            System.out.println("Error adding new dog.");
+            System.out.println(sqle.toString());
+            sqle.printStackTrace();
+
+        }
+
+    }
+
+    private static void searchDogByID() {
+
+        final String searchSql = "SELECT * FROM dogs WHERE id LIKE ?";
+
+        try (Connection connection = DriverManager.getConnection(url);
+             PreparedStatement searchStatement = connection.prepareStatement(searchSql)){
+
+            int searchID = intInput("Enter dog's ID: ");
+
+            searchStatement.setInt(1, searchID);
+            ResultSet dogRs = searchStatement.executeQuery();
+
+            if (!dogRs.isBeforeFirst()) {   // Returns false if no results
+                System.out.println("Sorry, no dogs by that ID found");
+            } else {
+                while (dogRs.next()) {
+                    printDogInfo(dogRs);
                 }
 
             }
@@ -166,5 +197,14 @@ public class Vet {
         }
 
 
+        private static void printDogInfo(ResultSet dogRs ) throws SQLException {
+            int dogID = dogRs.getInt("id");
+            String name = dogRs.getString("name");
+            int age = dogRs.getInt("age");
+            double weight = dogRs.getDouble("weight");
+            boolean vax = dogRs.getBoolean("vax");
+            System.out.printf("ID: %d Name %s, age %d, weight %.2f, vaccinated %s\n", dogID, name, age, weight, vax);
+
+        }
 
 }
